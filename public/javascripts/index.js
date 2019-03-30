@@ -1,7 +1,7 @@
 $(document).ready(function () {
   var timeData = [],
-    temperatureData = [],
-    humidityData = [];
+    signal1Data = [],
+    signal2Data = [];
   var data = {
     labels: timeData,
     datasets: [
@@ -14,7 +14,8 @@ $(document).ready(function () {
         backgroundColor: "rgba(255, 204, 0, 0.4)",
         pointHoverBackgroundColor: "rgba(255, 204, 0, 1)",
         pointHoverBorderColor: "rgba(255, 204, 0, 1)",
-        data: temperatureData
+        spanGaps: true,
+        data: signal1Data
       },
       {
         fill: false,
@@ -25,7 +26,8 @@ $(document).ready(function () {
         backgroundColor: "rgba(24, 120, 240, 0.4)",
         pointHoverBackgroundColor: "rgba(24, 120, 240, 1)",
         pointHoverBorderColor: "rgba(24, 120, 240, 1)",
-        data: humidityData
+        spanGaps: true,
+        data: signal2Data
       }
     ]
   }
@@ -66,35 +68,42 @@ $(document).ready(function () {
     options: basicOption
   });
 
+  // wss=Azure App Service | ws=Localhost
   var ws = new WebSocket('wss://' + location.host);
+  //var ws = new WebSocket('ws://' + location.host);
   ws.onopen = function () {
     console.log('Successfully connect WebSocket');
   }
   ws.onmessage = function (message) {
-    console.log('receive message' + message.data);
+	// {"signal":1,"payload":28.75,"time":"2019:03:30T10:34:50"}
+    console.log('receive message: ' + message.data);
     try {
       var obj = JSON.parse(message.data);
-      if(!obj.time || !obj.temperature) {
+      if(!obj.time) {
+		alert(JSON.stringify(obj))
         return;
       }
       timeData.push(obj.time);
-      temperatureData.push(obj.temperature);
-      // only keep no more than 50 points in the line chart
+      // only keep no more than n points in the line chart
       const maxLen = 50;
       var len = timeData.length;
       if (len > maxLen) {
         timeData.shift();
-        temperatureData.shift();
+        signal1Data.shift();
+        signal2Data.shift();
       }
 
-      if (obj.humidity) {
-        humidityData.push(obj.humidity);
+      if (obj.signal == 1) {
+		  signal1Data.push(obj.payload);
+		  signal2Data.push(null);
       }
-      if (humidityData.length > maxLen) {
-        humidityData.shift();
+      if (obj.signal == 2) {
+		  signal2Data.push(obj.payload);
+		  signal1Data.push(null);
       }
 
       myLineChart.update();
+
     } catch (err) {
       console.error(err);
     }
